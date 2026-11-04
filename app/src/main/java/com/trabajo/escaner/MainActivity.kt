@@ -179,24 +179,24 @@ class MainActivity : AppCompatActivity() {
             proxy.close()
         }
     }
-    private fun manejarLectura(texto: String) {
-        ultimoCodigo = texto
+        private fun manejarLectura(texto: String) {
+        val limpio = texto.trim()
+        ultimoCodigo = limpio
 
-        val esUrl = texto.startsWith("http://", ignoreCase = true) ||
-                texto.startsWith("https://", ignoreCase = true) ||
-                texto.startsWith("www.", ignoreCase = true)
+        val esUrl = limpio.startsWith("http://", ignoreCase = true) ||
+                limpio.startsWith("https://", ignoreCase = true) ||
+                limpio.startsWith("www.", ignoreCase = true)
 
-        val tipo = if (esUrl) "🔗" else "✅"
-        tvResultado.text = "tipotipotipotexto"
+        tvResultado.text = if (esUrl) "🔗 limpio"else"✅limpio" else "✅limpio"else"✅limpio"
 
-        copiar(texto)
-        guardarEnHistorial(texto)
+        copiar(limpio)
+        guardarEnHistorial(limpio)
         btnReanudar.visibility = android.view.View.VISIBLE
 
         if (esUrl) {
-            val url = if (texto.startsWith("http://", true) ||
-                texto.startsWith("https://", true)
-            ) texto else "https://$texto"
+            val url = if (limpio.startsWith("http://", true) ||
+                limpio.startsWith("https://", true)
+            ) limpio else "https://$limpio"
 
             val dominio = try {
                 Uri.parse(url).host ?: url
