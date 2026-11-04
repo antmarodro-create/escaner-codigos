@@ -21,63 +21,67 @@
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:layout_margin="16dp"
-        android:background="#80000000"
-        android:contentDescription="Ajustes"
+        android:background="#66000000"
         android:src="@android:drawable/ic_menu_preferences"
+        android:contentDescription="Ajustes"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <ImageButton
         android:id="@+id/btnLinterna"
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:layout_margin="16dp"
-        android:background="#80000000"
+        android:background="#66000000"
+        android:src="@android:drawable/ic_dialog_info"
         android:contentDescription="Linterna"
-        android:src="@android:drawable/ic_menu_camera"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintStart_toStartOf="parent" />
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/tvResultado"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp"
-        android:background="#CC1B1B1B"
+        android:background="#CC000000"
+        android:padding="16dp"
+        android:text="Apunta al código dentro del marco"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:gravity="center"
+        app:layout_constraintBottom_toTopOf="@id/btnReanudar" />
+
+    <Button
+        android:id="@+id/btnReanudar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🔄 Escanear de nuevo"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/panelBotones" />
+
+    <LinearLayout
+        android:id="@+id/panelBotones"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#CC000000"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <TextView
-            android:id="@+id/tvResultado"
-            android:layout_width="match_parent"
+        <Button
+            android:id="@+id/btnCopiar"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:text="Apunta al código dentro del marco" />
+            android:layout_marginEnd="8dp"
+            android:text="Copiar" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <Button
+            android:id="@+id/btnHistorial"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp">
-
-            <Button
-                android:id="@+id/btnCopiar"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="Copiar" />
-
-           
-
->
-            <Button
-                android:id="@+id/btnHistorial"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Historial" />
-        </LinearLayout>
+            android:layout_marginStart="8dp"
+            android:text="Historial" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
