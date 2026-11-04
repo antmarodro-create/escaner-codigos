@@ -291,15 +291,10 @@ class MainActivity : AppCompatActivity() {
             sb.append("    fecha.substring(11){fecha.substring(11)}fecha.substring(11)texto\n")
         }
 
-        val vista = TextView(this)
-        vista.text = sb.toString()
-        vista.setPadding(40, 40, 40, 40)
-        vista.setTextIsSelectable(true)
-        vista.movementMethod = ScrollingMovementMethod()
-
-        AlertDialog.Builder(this)
+                AlertDialog.Builder(this)
             .setTitle("Historial")
-            .setView(vista)
+            .setMessage(sb.toString())
+
             .setPositiveButton("Cerrar", null)
             .setNeutralButton("Borrar todo") { _, _ ->
                 prefs.edit().remove("historialTexto").commit()
