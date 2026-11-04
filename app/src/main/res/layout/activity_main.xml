@@ -11,6 +11,22 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <com.trabajo.escaner.OverlayView
+        android:id="@+id/overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <ImageButton
+        android:id="@+id/btnAjustes"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_margin="16dp"
+        android:background="#80000000"
+        android:contentDescription="Ajustes"
+        android:src="@android:drawable/ic_menu_preferences"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <ImageButton
         android:id="@+id/btnLinterna"
         android:layout_width="56dp"
@@ -18,7 +34,7 @@
         android:layout_margin="16dp"
         android:background="#80000000"
         android:contentDescription="Linterna"
-     android:src="@android:drawable/ic_menu_camera"
+        android:src="@android:drawable/ic_menu_camera"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -36,7 +52,7 @@
             android:layout_height="wrap_content"
             android:textColor="#FFFFFF"
             android:textSize="15sp"
-            android:text="Apunta la cámara a un código" />
+            android:text="Apunta al código dentro del marco" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -51,6 +67,9 @@
                 android:layout_height="wrap_content"
                 android:text="Copiar" />
 
+           
+
+>
             <Button
                 android:id="@+id/btnHistorial"
                 android:layout_width="0dp"
