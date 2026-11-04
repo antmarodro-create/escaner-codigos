@@ -187,7 +187,8 @@ class MainActivity : AppCompatActivity() {
                 limpio.startsWith("https://", ignoreCase = true) ||
                 limpio.startsWith("www.", ignoreCase = true)
 
-        tvResultado.text = if (esUrl) "🔗 limpio"else"✅limpio" else "✅limpio"else"✅limpio"
+                tvResultado.text = if (esUrl) "🔗 limpio"else"✅limpio" else "✅limpio"else"✅limpio"
+
 
 
         copiar(limpio)
