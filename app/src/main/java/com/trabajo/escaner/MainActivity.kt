@@ -20,6 +20,8 @@ import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.core.content.ContextCompat
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -146,7 +148,7 @@ class MainActivity : AppCompatActivity() {
                 i += paso
                 n++
             }
-            (suma / (if (n == 0) 1 else n)) < 60
+            (suma / (if (n == 0) 1 else n)) < 60L
         } catch (e: Exception) {
             false
         }
