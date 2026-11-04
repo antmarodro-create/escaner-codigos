@@ -77,7 +77,8 @@ class MainActivity : AppCompatActivity() {
                             scanner.process(inputImage)
                                 .addOnSuccessListener { codigos ->
                                     for (codigo in codigos) {
-                                        val texto = codigo.raw ?: continue
+                                        val texto = codigo.rawValue ?: continue
+
                                         if (texto != ultimoCodigo) {
                                             ultimoCodigo = texto
                                             runOnUiThread {
