@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
@@ -13,15 +12,14 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
 
     private val pintura = Paint(Paint.ANTI_ALIAS_FLAG)
     private val pinturaLinea = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val path = Path()
     private val rect = RectF()
 
     init {
         pintura.style = Paint.Style.FILL
-        pinturaLinea.style = Paint.Style.STROKE
-        pinturaLinea.color = Color.RED
-        pinturaLinea.strokeWidth = 5f
         pintura.color = 0xCC1B1B1B.toInt()
+        pinturaLinea.style = Paint.Style.STROKE
+        pinturaLinea.color = Color.WHITE
+        pinturaLinea.strokeWidth = 3f
     }
 
     fun setColorHex(hex: String) {
@@ -35,21 +33,20 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        path.reset()
-        path.addRect(0f, 0f, width.toFloat(), height.toFloat(), Path.Direction.CW)
 
         val w = width * 0.88f
         val h = height * 0.32f
         val izq = (width - w) / 2f
         val alt = height * 0.30f
         rect.set(izq, alt, izq + w, alt + h)
-        path.addRoundRect(rect, 20f, 20f, Path.Direction.CCW)
 
-        pintura.fillType = Paint.FillType.EVEN_ODD
-        canvas.drawPath(path, pintura)
+        // Oscurecer las 4 zonas fuera del marco
+        canvas.drawRect(0f, 0f, width.toFloat(), rect.top, pintura)
+        canvas.drawRect(0f, rect.bottom, width.toFloat(), height.toFloat(), pintura)
+        canvas.drawRect(0f, rect.top, rect.left, rect.bottom, pintura)
+        canvas.drawRect(rect.right, rect.top, width.toFloat(), rect.bottom, pintura)
 
-        // Borde blanco pinturaLinea.color = Color.WHITE
-        pinturaLinea.strokeWidth = 3f
+        // Borde blanco
         canvas.drawRoundRect(rect, 20f, 20f, pinturaLinea)
 
         // Línea roja central (nivel)
