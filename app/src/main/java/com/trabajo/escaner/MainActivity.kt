@@ -189,6 +189,7 @@ class MainActivity : AppCompatActivity() {
 
         tvResultado.text = if (esUrl) "🔗 limpio"else"✅limpio" else "✅limpio"else"✅limpio"
 
+
         copiar(limpio)
         guardarEnHistorial(limpio)
         btnReanudar.visibility = android.view.View.VISIBLE
