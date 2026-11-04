@@ -14,16 +14,22 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
     private val pintura = Paint(Paint.ANTI_ALIAS_FLAG)
     private val pinturaLinea = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
+    private val rect = RectF()
 
     init {
         pintura.style = Paint.Style.FILL
         pinturaLinea.style = Paint.Style.STROKE
         pinturaLinea.color = Color.RED
         pinturaLinea.strokeWidth = 5f
+        pintura.color = 0xCC1B1B1B.toInt()
     }
 
     fun setColorHex(hex: String) {
-        pintura.color = try { Color.parseColor(hex) } catch (e: Exception) { 0xCC1B1B1B.toInt() }
+        pintura.color = try {
+            Color.parseColor(hex)
+        } catch (e: Exception) {
+            0xCC1B1B1B.toInt()
+        }
         invalidate()
     }
 
@@ -36,18 +42,16 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         val h = height * 0.32f
         val izq = (width - w) / 2f
         val alt = height * 0.30f
-        val rect = RectF(izq, alt, izq + w, alt + h)
+        rect.set(izq, alt, izq + w, alt + h)
         path.addRoundRect(rect, 20f, 20f, Path.Direction.CCW)
 
         pintura.fillType = Paint.FillType.EVEN_ODD
         canvas.drawPath(path, pintura)
 
-        // Borde blanco del rectángulo
-        pinturaLinea.color = Color.WHITE
+        // Borde blanco pinturaLinea.color = Color.WHITE
         pinturaLinea.strokeWidth = 3f
-        canvas.drawRoundRect(rect, 20f, 20f, pinturaLinea
+        canvas.drawRoundRect(rect, 20f, 20f, pinturaLinea)
 
->
         // Línea roja central (nivel)
         pinturaLinea.color = Color.RED
         pinturaLinea.strokeWidth = 5f
