@@ -237,12 +237,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Historial como una sola lista de líneas con fecha
-    private fun guardarEnHistorial(texto: String) {
+        private fun guardarEnHistorial(texto: String) {
         try {
             val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            val linea = "sdf.format(Date())∣{sdf.format(Date())} |sdf.format(Date())∣texto"
+            val linea = sdf.format(Date()) + " | " + texto
             val anterior = prefs.getString("historialTexto", "") ?: ""
-            val nuevo = if (anterior.isEmpty()) linea else "linea\nlinea\nlinea\nanterior"
+            val nuevo = if (anterior.isEmpty()) linea else linea + "\n" + anterior
             val ok = prefs.edit().putString("historialTexto", nuevo).commit()
             if (!ok) {
                 Toast.makeText(this, "Aviso: no se guardó en historial", Toast.LENGTH_SHORT).show()
@@ -251,6 +251,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Error guardando historial", Toast.LENGTH_SHORT).show()
         }
     }
+
 
     private fun mostrarHistorial() {
         val contenido = prefs.getString("historialTexto", "") ?: ""
