@@ -8,15 +8,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.widget.ArrayAdapter
+import android.text.method.ScrollingMovementMethod
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -24,6 +24,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -41,14 +42,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnLinterna: ImageButton
     private lateinit var btnCopiar: Button
     private lateinit var btnHistorial: Button
+    private lateinit var btnReanudar: Button
     private lateinit var btnAjustes: ImageButton
 
     private var linternaOn = false
     private var flashAuto = true
-    private var camara: androidx.camera.core.Camera? = null
+    private var escaneoActivo = true
+    private var camara: Camera? = null
+    private var analisis: ImageAnalysis? = null
     private val executor = Executors.newSingleThreadExecutor()
-    private var ultimoCodigo = ""
-    private var ultimoTiempo = 0L
 
     private val prefs by lazy { getSharedPreferences("escaner", Context.MODE_PRIVATE) }
 
@@ -62,52 +64,67 @@ class MainActivity : AppCompatActivity() {
         btnLinterna = findViewById(R.id.btnLinterna)
         btnCopiar = findViewById(R.id.btnCopiar)
         btnHistorial = findViewById(R.id.btnHistorial)
+        btnReanudar = findViewById(R.id.btnReanudar)
         btnAjustes = findViewById(R.id.btnAjustes)
 
         overlay.setColorHex(prefs.getString("colorMarco", "#CC1B1B1B") ?: "#CC1B1B1B")
+        flashAuto = prefs.getBoolean("flashAuto", true)
 
         btnLinterna.setOnClickListener { alternarLinterna() }
-        btnCopiar.setOnClickListener {
-            if (ultimoCodigo.isNotEmpty()) copiar(ultimoCodigo)
-        }
+        btnCopiar.setOnClickListener { copiar(tvResultado.text.toString()) }
         btnHistorial.setOnClickListener { mostrarHistorial() }
+        btnReanudar.setOnClickListener { reanudarEscaneo() }
         btnAjustes.setOnClickListener { mostrarAjustes() }
 
+        btnReanudar.visibility = android.view.View.GONE
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED) iniciarCamara()
+            == PackageManager.PERMISSION_GRANTED
+        ) iniciarCamara()
         else requestPermissions(arrayOf(Manifest.permission.CAMERA), 1)
     }
 
-    override fun onRequestPermissionsResult(rc: Int, p: Array<out String>, g: IntArray) {
+    override fun onRequestPermissionsResult(
+        rc: Int, p: Array<out String>, g: IntArray
+    ) {
         super.onRequestPermissionsResult(rc, p, g)
-        if (rc == 1 && g.isNotEmpty() && g[0] == PackageManager.PERMISSION_GRANTED) iniciarCamara()
-        else Toast.makeText(this, "Se necesita permiso de cámara", Toast.LENGTH_LONG).show()
+        if (rc == 1 && g.isNotEmpty() && g[0] == PackageManager.PERMISSION_GRANTED) {
+            iniciarCamara()
+        } else {
+            Toast.makeText(this, "Se necesita permiso de cámara", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun iniciarCamara() {
         val futuro = ProcessCameraProvider.getInstance(this)
         futuro.addListener({
-            val provider = futuro.get()
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
-            }
-            val opciones = BarcodeScannerOptions.Builder()
-                .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
-                .build()
-            val scanner = BarcodeScanning.getClient(opciones)
-
-            val analisis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-            analisis.setAnalyzer(executor) { proxy ->
-                val hayLuz = medirBrillo(proxy)
-                procesar(proxy, scanner, hayLuz)
-            }
-
             try {
+                val provider = futuro.get()
+
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                }
+
+                val opciones = BarcodeScannerOptions.Builder()
+                    .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+                    .build()
+                val scanner = BarcodeScanning.getClient(opciones)
+
+                analisis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                analisis!!.setAnalyzer(executor) { proxy ->
+                    if (escaneoActivo) {
+                        val hayLuz = medirBrillo(proxy)
+                        procesar(proxy, scanner, hayLuz)
+                    } else {
+                        proxy.close()
+                    }
+                }
+
                 provider.unbindAll()
                 camara = provider.bindToLifecycle(
-                    this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analisis
+                    this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analisis!!
                 )
                 camara?.cameraControl?.enableTorch(false)
             } catch (e: Exception) {
@@ -119,40 +136,39 @@ class MainActivity : AppCompatActivity() {
     private fun medirBrillo(proxy: ImageProxy): Boolean {
         return try {
             val buffer = proxy.planes[0].buffer
-            val paso = buffer.remaining() / 50
+            val total = buffer.remaining()
+            val paso = if (total > 50) total / 50 else 1
             var suma = 0L
             var n = 0
             var i = 0
-            while (i < buffer.remaining() && n < 50) {
-                suma += buffer.get(i).toInt() and 0xFF
+            while (i < total && n < 50) {
+                suma += (buffer.get(i).toInt() and 0xFF)
                 i += paso
                 n++
             }
             (suma / (if (n == 0) 1 else n)) < 60
-        } catch (e: Exception) { false }
+        } catch (e: Exception) {
+            false
+        }
     }
 
-    private fun procesar(proxy: ImageProxy, scanner: com.google.mlkit.vision.barcode.BarcodeScanner, hayLuz: Boolean) {
+    private fun procesar(proxy: ImageProxy, scanner: BarcodeScanner, hayLuz: Boolean) {
         runOnUiThread {
-            if (flashAuto && hayLuz && !linternaOn) {
-                camara?.cameraControl?.enableTorch(true)
-            } else if (!flashAuto && !linternaOn) {
-                camara?.cameraControl?.enableTorch(false)
+            if (flashAuto && !linternaOn) {
+                camara?.cameraControl?.enableTorch(hayLuz)
             }
         }
         try {
-            val media = proxy.imageInfo.rotationDegrees
-            val imagen = InputImage.fromMediaImage(proxy.image!!, media)
+            val rot = proxy.imageInfo.rotationDegrees
+            val imagen = InputImage.fromMediaImage(proxy.image!!, rot)
             scanner.process(imagen)
                 .addOnSuccessListener { codigos ->
-                    for (cod in codigos) {
-                        val texto = cod.rawValue ?: cod.displayValue ?: continue
-                        val ahora = System.currentTimeMillis()
-                        if (texto == ultimoCodigo && ahora - ultimoTiempo < 2000) continue
-                        ultimoCodigo = texto
-                        ultimoTiempo = ahora
-                        runOnUiThread { manejarLectura(texto) }
-                        break
+                    if (codigos.isNotEmpty() && escaneoActivo) {
+                        val texto = codigos[0].rawValue ?: codigos[0].displayValue
+                        if (texto != null) {
+                            escaneoActivo = false
+                            runOnUiThread { manejarLectura(texto) }
+                        }
                     }
                 }
                 .addOnCompleteListener { proxy.close() }
@@ -160,11 +176,11 @@ class MainActivity : AppCompatActivity() {
             proxy.close()
         }
     }
-
     private fun manejarLectura(texto: String) {
-        tvResultado.text = texto
+        tvResultado.text = "✅ $texto"
         copiar(texto)
         guardarEnHistorial(texto)
+        btnReanudar.visibility = android.view.View.VISIBLE
 
         if (texto.startsWith("http://") || texto.startsWith("https://")) {
             try {
@@ -173,7 +189,11 @@ class MainActivity : AppCompatActivity() {
                     .setTitle("Abrir enlace")
                     .setMessage("¿Quieres abrir:\n$dominio ?")
                     .setPositiveButton("Abrir") { _, _ ->
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(texto)))
+                        try {
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(texto)))
+                        } catch (e: Exception) {
+                            Toast.makeText(this, "No se pudo abrir el enlace", Toast.LENGTH_SHORT).show()
+                        }
                     }
                     .setNegativeButton("Cancelar", null)
                     .show()
@@ -181,61 +201,80 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun copiar(texto: String) {
-        val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        cb.setPrimaryClip(ClipData.newPlainText("código", texto))
-        Toast.makeText(this, "Copiado ✅", Toast.LENGTH_SHORT).show()
+    private fun reanudarEscaneo() {
+        escaneoActivo = true
+        tvResultado.text = "Apunta al código dentro del marco"
+        btnReanudar.visibility = android.view.View.GONE
     }
 
+    private fun copiar(texto: String) {
+        try {
+            val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cb.setPrimaryClip(ClipData.newPlainText("código", texto))
+            Toast.makeText(this, "Copiado ✅", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) { }
+    }
+
+    // Historial como texto (más fiable que StringSet)
     private fun guardarEnHistorial(texto: String) {
-        val lista = prefs.getStringSet("historial", mutableSetOf())?.toMutableSet()
-            ?: mutableSetOf()
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        lista.add("sdf.format(Date())∣{sdf.format(Date())} |sdf.format(Date())∣texto")
-        prefs.edit().putStringSet("historial", lista).apply()
+        val linea = "sdf.format(Date())∣{sdf.format(Date())} |sdf.format(Date())∣texto"
+        val anterior = prefs.getString("historialTexto", "") ?: ""
+        prefs.edit().putString("historialTexto", "linea\nlinea\nlinea\nanterior").apply()
     }
 
     private fun mostrarHistorial() {
-        val datos = prefs.getStringSet("historial", mutableSetOf())
-            ?.sortedDescending() ?: emptyList()
+        val contenido = prefs.getString("historialTexto", "") ?: ""
+        if (contenido.isBlank()) {
+            AlertDialog.Builder(this)
+                .setTitle("Historial")
+                .setMessage("Sin lecturas todavía")
+                .setPositiveButton("Cerrar", null)
+                .show()
+            return
+        }
 
         // Agrupar por mes y día
-        val agrupado = StringBuilder()
+        val meses = arrayOf(
+            "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        )
+        val sb = StringBuilder()
         var mesActual = ""
         var diaActual = ""
-        val meses = arrayOf("", "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-            "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre")
-        for (linea in datos) {
+        for (linea in contenido.split("\n")) {
             val partes = linea.split(" | ", limit = 2)
             if (partes.size < 2) continue
             val fecha = partes[0]
             val texto = partes[1]
+            if (fecha.length < 10) continue
             val mes = fecha.substring(0, 7)
             val dia = fecha.substring(0, 10)
             if (mes != mesActual) {
                 mesActual = mes
                 diaActual = ""
-                agrupado.append("\n■ meses[mes.substring(5).toInt()]{meses[mes.substring(5).toInt()]}meses[mes.substring(5).toInt()]{mes.substring(0, 4)}\n")
+                val numMes = mes.substring(5).toIntOrNull() ?: 1
+                sb.append("\n■ meses[numMes]{meses[numMes]}meses[numMes]{mes.substring(0, 4)}\n")
             }
             if (dia != diaActual) {
                 diaActual = dia
-                agrupado.append("\n  ▸ $dia\n")
+                sb.append("\n  ▸ $dia\n")
             }
-            agrupado.append("    $texto\n")
+            sb.append("    $texto\n")
         }
-        if (agrupado.isEmpty()) agrupado.append("Sin lecturas todavía")
 
         val vista = TextView(this)
-        vista.text = agrupado.toString()
+        vista.text = sb.toString()
         vista.setPadding(40, 40, 40, 40)
         vista.setTextIsSelectable(true)
+        vista.movementMethod = ScrollingMovementMethod()
 
         AlertDialog.Builder(this)
             .setTitle("Historial")
             .setView(vista)
             .setPositiveButton("Cerrar", null)
             .setNeutralButton("Borrar todo") { _, _ ->
-                prefs.edit().remove("historial").apply()
+                prefs.edit().remove("historialTexto").apply()
                 Toast.makeText(this, "Historial borrado", Toast.LENGTH_SHORT).show()
             }
             .show()
@@ -246,20 +285,22 @@ class MainActivity : AppCompatActivity() {
         entrada.hint = "Ej: #CC1B1B1B, #80000000, #66000000"
         entrada.setText(prefs.getString("colorMarco", "#CC1B1B1B"))
 
+        val chk = booleanArrayOf(flashAuto)
         AlertDialog.Builder(this)
             .setTitle("Ajustes")
             .setMultiChoiceItems(
                 arrayOf("Flash automático con poca luz"),
-                booleanArrayOf(flashAuto)
-            ) { _, which, isChecked ->
-                flashAuto = isChecked
-                prefs.edit().putBoolean("flashAuto", isChecked).apply()
-            }
+                chk
+            ) { _, _, isChecked -> chk[0] = isChecked }
             .setView(entrada)
-            .setPositiveButton("Guardar color") { _, _ ->
+            .setPositiveButton("Guardar") { _, _ ->
+                flashAuto = chk[0]
+                prefs.edit().putBoolean("flashAuto", flashAuto).apply()
                 val color = entrada.text.toString().trim()
-                overlay.setColorHex(color)
-                prefs.edit().putString("colorMarco", color).apply()
+                if (color.isNotEmpty()) {
+                    overlay.setColorHex(color)
+                    prefs.edit().putString("colorMarco", color).apply()
+                }
             }
             .setNegativeButton("Cerrar", null)
             .show()
@@ -268,7 +309,11 @@ class MainActivity : AppCompatActivity() {
     private fun alternarLinterna() {
         linternaOn = !linternaOn
         camara?.cameraControl?.enableTorch(linternaOn)
-        Toast.makeText(this, if (linternaOn) "Linterna ON" else "Linterna OFF", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            this,
+            if (linternaOn) "Linterna ON" else "Linterna OFF",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     override fun onDestroy() {
