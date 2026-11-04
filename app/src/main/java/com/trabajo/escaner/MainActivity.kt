@@ -18,12 +18,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.core.content.ContextCompat
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -50,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private var escaneoActivo = true
     private var camara: Camera? = null
     private var analisis: ImageAnalysis? = null
+    private var ultimoCodigo = ""
     private val executor = Executors.newSingleThreadExecutor()
 
     private val prefs by lazy { getSharedPreferences("escaner", Context.MODE_PRIVATE) }
@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity() {
         flashAuto = prefs.getBoolean("flashAuto", true)
 
         btnLinterna.setOnClickListener { alternarLinterna() }
-        btnCopiar.setOnClickListener { copiar(tvResultado.text.toString()) }
+        btnCopiar.setOnClickListener { copiar(ultimoCodigo) }
         btnHistorial.setOnClickListener { mostrarHistorial() }
         btnReanudar.setOnClickListener { reanudarEscaneo() }
         btnAjustes.setOnClickListener { mostrarAjustes() }
@@ -164,8 +164,9 @@ class MainActivity : AppCompatActivity() {
             scanner.process(imagen)
                 .addOnSuccessListener { codigos ->
                     if (codigos.isNotEmpty() && escaneoActivo) {
-                        val texto = codigos[0].rawValue ?: codigos[0].displayValue
-                        if (texto != null) {
+                        val b = codigos[0]
+                        val texto = (b.rawValue ?: b.displayValue ?: "").trim()
+                        if (texto.isNotEmpty()) {
                             escaneoActivo = false
                             runOnUiThread { manejarLectura(texto) }
                         }
@@ -177,37 +178,52 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun manejarLectura(texto: String) {
-        tvResultado.text = "✅ $texto"
+        ultimoCodigo = texto
+
+        val esUrl = texto.startsWith("http://", ignoreCase = true) ||
+                texto.startsWith("https://", ignoreCase = true) ||
+                texto.startsWith("www.", ignoreCase = true)
+
+        val tipo = if (esUrl) "🔗" else "✅"
+        tvResultado.text = "tipotipotipotexto"
+
         copiar(texto)
         guardarEnHistorial(texto)
         btnReanudar.visibility = android.view.View.VISIBLE
 
-        if (texto.startsWith("http://") || texto.startsWith("https://")) {
-            try {
-                val dominio = Uri.parse(texto).host ?: texto
-                AlertDialog.Builder(this)
-                    .setTitle("Abrir enlace")
-                    .setMessage("¿Quieres abrir:\n$dominio ?")
-                    .setPositiveButton("Abrir") { _, _ ->
-                        try {
-                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(texto)))
-                        } catch (e: Exception) {
-                            Toast.makeText(this, "No se pudo abrir el enlace", Toast.LENGTH_SHORT).show()
-                        }
+        if (esUrl) {
+            val url = if (texto.startsWith("http://", true) ||
+                texto.startsWith("https://", true)
+            ) texto else "https://$texto"
+
+            val dominio = try {
+                Uri.parse(url).host ?: url
+            } catch (e: Exception) { url }
+
+            AlertDialog.Builder(this)
+                .setTitle("Abrir enlace")
+                .setMessage("¿Quieres abrir:\n$dominio ?")
+                .setPositiveButton("Abrir") { _, _ ->
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "No se pudo abrir el enlace", Toast.LENGTH_SHORT).show()
                     }
-                    .setNegativeButton("Cancelar", null)
-                    .show()
-            } catch (e: Exception) { }
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
         }
     }
 
     private fun reanudarEscaneo() {
         escaneoActivo = true
+        ultimoCodigo = ""
         tvResultado.text = "Apunta al código dentro del marco"
         btnReanudar.visibility = android.view.View.GONE
     }
 
     private fun copiar(texto: String) {
+        if (texto.isEmpty()) return
         try {
             val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cb.setPrimaryClip(ClipData.newPlainText("código", texto))
@@ -215,12 +231,20 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) { }
     }
 
-    // Historial como texto (más fiable que StringSet)
+    // Historial como una sola lista de líneas con fecha
     private fun guardarEnHistorial(texto: String) {
-        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val linea = "sdf.format(Date())∣{sdf.format(Date())} |sdf.format(Date())∣texto"
-        val anterior = prefs.getString("historialTexto", "") ?: ""
-        prefs.edit().putString("historialTexto", "linea\nlinea\nlinea\nanterior").apply()
+        try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val linea = "sdf.format(Date())∣{sdf.format(Date())} |sdf.format(Date())∣texto"
+            val anterior = prefs.getString("historialTexto", "") ?: ""
+            val nuevo = if (anterior.isEmpty()) linea else "linea\nlinea\nlinea\nanterior"
+            val ok = prefs.edit().putString("historialTexto", nuevo).commit()
+            if (!ok) {
+                Toast.makeText(this, "Aviso: no se guardó en historial", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error guardando historial", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun mostrarHistorial() {
@@ -234,7 +258,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Agrupar por mes y día
         val meses = arrayOf(
             "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
             "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
@@ -247,7 +270,7 @@ class MainActivity : AppCompatActivity() {
             if (partes.size < 2) continue
             val fecha = partes[0]
             val texto = partes[1]
-            if (fecha.length < 10) continue
+            if (fecha.length < 16) continue
             val mes = fecha.substring(0, 7)
             val dia = fecha.substring(0, 10)
             if (mes != mesActual) {
@@ -260,7 +283,7 @@ class MainActivity : AppCompatActivity() {
                 diaActual = dia
                 sb.append("\n  ▸ $dia\n")
             }
-            sb.append("    $texto\n")
+            sb.append("    fecha.substring(11){fecha.substring(11)}fecha.substring(11)texto\n")
         }
 
         val vista = TextView(this)
@@ -274,7 +297,7 @@ class MainActivity : AppCompatActivity() {
             .setView(vista)
             .setPositiveButton("Cerrar", null)
             .setNeutralButton("Borrar todo") { _, _ ->
-                prefs.edit().remove("historialTexto").apply()
+                prefs.edit().remove("historialTexto").commit()
                 Toast.makeText(this, "Historial borrado", Toast.LENGTH_SHORT).show()
             }
             .show()
