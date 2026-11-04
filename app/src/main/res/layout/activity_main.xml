@@ -18,7 +18,7 @@
         android:layout_margin="16dp"
         android:background="#80000000"
         android:contentDescription="Linterna"
-        android:src="@android:ic_menu_save"
+     android:src="@android:drawable/ic_menu_camera"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
