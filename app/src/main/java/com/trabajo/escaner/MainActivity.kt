@@ -23,10 +23,6 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.camera.CameraXConfig
-import com.google.mlkit.vision.camera.CameraSource
-import com.google.mlkit.vision.camera.DetectionTask
-import com.google.mlkit.vision.camera.Detector
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
