@@ -146,7 +146,7 @@ class MainActivity : AppCompatActivity() {
             scanner.process(imagen)
                 .addOnSuccessListener { codigos ->
                     for (cod in codigos) {
-                        val texto = cod.rawData ?: cod.displayValue ?: continue
+                        val texto = cod.rawValue ?: cod.displayValue ?: continue
                         val ahora = System.currentTimeMillis()
                         if (texto == ultimoCodigo && ahora - ultimoTiempo < 2000) continue
                         ultimoCodigo = texto
