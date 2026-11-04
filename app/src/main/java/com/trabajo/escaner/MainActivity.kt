@@ -284,15 +284,12 @@ class MainActivity : AppCompatActivity() {
                 diaActual = ""
                 val numMes = mes.substring(5).toIntOrNull() ?: 1
                                 sb.append("\n■ " + meses[numMes] + " " + mes.substring(0, 4) + "\n")
-)
             }
             if (dia != diaActual) {
                 diaActual = dia
                                 sb.append("\n  ▸ " + dia + "\n")
-)
             }
                         sb.append("    " + fecha.substring(11) + "  " + texto + "\n")
-)
         }
 
                 AlertDialog.Builder(this)
