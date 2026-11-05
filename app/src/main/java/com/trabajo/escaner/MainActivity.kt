@@ -55,6 +55,8 @@ class MainActivity : AppCompatActivity() {
     private val executor = Executors.newSingleThreadExecutor()
 
     private val prefs by lazy { getSharedPreferences("escaner", Context.MODE_PRIVATE) }
+    private var proxyAncho = 0
+    private var proxyAlto = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -162,23 +164,69 @@ class MainActivity : AppCompatActivity() {
         }
         try {
             val rot = proxy.imageInfo.rotationDegrees
+            proxyAncho = proxy.width
+            proxyAlto = proxy.height
             val imagen = InputImage.fromMediaImage(proxy.image!!, rot)
             scanner.process(imagen)
-                .addOnSuccessListener { codigos ->
+                                .addOnSuccessListener { codigos ->
                     if (codigos.isNotEmpty() && escaneoActivo) {
                         val b = codigos[0]
                         val texto = (b.rawValue ?: b.displayValue ?: "").trim()
-                        if (texto.isNotEmpty()) {
+                        if (texto.isNotEmpty() && centroEnMarco(b, rot)) {
                             escaneoActivo = false
                             runOnUiThread { manejarLectura(texto) }
                         }
                     }
                 }
+
                 .addOnCompleteListener { proxy.close() }
         } catch (e: Exception) {
             proxy.close()
         }
     }
+    private fun centroEnMarco(b: Barcode, rotacion: Int): Boolean {
+        val puntos = b.cornerPoints ?: return false
+        if (puntos.isEmpty()) return false
+        var cx = 0f
+        var cy = 0f
+        for (p in puntos) { cx += p.x; cy += p.y }
+        cx /= puntos.size
+        cy /= puntos.size
+
+        val anchoImg = if (rotacion == 90 || rotacion == 270) proxyAlto else proxyAncho
+        val altoImg = if (rotacion == 90 || rotacion == 270) proxyAncho else proxyAlto
+        var x = cx.toFloat()
+        var y = cy.toFloat()
+        when (rotacion) {
+            90 -> { val t = x; x = y; y = anchoImg - t }
+            180 -> { x = anchoImg - x; y = altoImg - y }
+            270 -> { val t = x; x = altoImg - y; y = t }
+        }
+
+        return runOnUiThreadBoolean(x, y, anchoImg.toFloat(), altoImg.toFloat())
+    }
+
+    private fun runOnUiThreadBoolean(px: Float, py: Float, iw: Float, ih: Float): Boolean {
+        var dentro = false
+        val latch = java.util.concurrent.CountDownLatch(1)
+        runOnUiThread {
+            val vw = previewView.width.toFloat()
+            val vh = previewView.height.toFloat()
+            if (vw > 0 && vh > 0 && iw > 0 && ih > 0) {
+                val escala = maxOf(vw / iw, vh / ih)
+                val offX = (iw * escala - vw) / 2f
+                val offY = (ih * escala - vh) / 2f
+                val sx = px * escala - offX
+                val sy = py * escala - offY
+                val r = overlay.getRectangulo()
+                dentro = sx >= r.left && sx <= r.right && sy >= r.top && sy <= r.bottom
+            }
+            latch.countDown()
+        }
+        try { latch.await(100, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (e: Exception) {}
+        return dentro
+    }
+
         private fun manejarLectura(texto: String) {
         val limpio = texto.trim()
         ultimoCodigo = limpio
