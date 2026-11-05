@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private var linternaOn = false
     private var flashAuto = true
     private var escaneoActivo = true
+    private var linternaAutoActiva = false
     private var camara: Camera? = null
     private var analisis: ImageAnalysis? = null
     private var ultimoCodigo = ""
@@ -159,9 +160,16 @@ class MainActivity : AppCompatActivity() {
     private fun procesar(proxy: ImageProxy, scanner: BarcodeScanner, hayLuz: Boolean) {
         runOnUiThread {
             if (flashAuto && !linternaOn) {
-                camara?.cameraControl?.enableTorch(hayLuz)
+                if (hayLuz && !linternaAutoActiva) {
+                    linternaAutoActiva = true
+                    camara?.cameraControl?.enableTorch(true)
+                } else if (!hayLuz && linternaAutoActiva) {
+                    linternaAutoActiva = false
+                    camara?.cameraControl?.enableTorch(false)
+                }
             }
         }
+
         try {
             val rot = proxy.imageInfo.rotationDegrees
             proxyAncho = proxy.width
@@ -228,6 +236,11 @@ class MainActivity : AppCompatActivity() {
     }
 
         private fun manejarLectura(texto: String) {
+        if (linternaAutoActiva || linternaOn) {
+            linternaAutoActiva = false
+            camara?.cameraControl?.enableTorch(false)
+        }
+                
         val limpio = texto.trim()
         ultimoCodigo = limpio
 
