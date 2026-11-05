@@ -50,6 +50,9 @@ class MainActivity : AppCompatActivity() {
     private var flashAuto = true
     private var escaneoActivo = true
     private var linternaAutoActiva = false
+    private var framesPocaLuz = 0
+    private var framesBuenaLuz = 0
+    
     private var camara: Camera? = null
     private var analisis: ImageAnalysis? = null
     private var ultimoCodigo = ""
@@ -158,12 +161,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun procesar(proxy: ImageProxy, scanner: BarcodeScanner, hayLuz: Boolean) {
-        runOnUiThread {
+                runOnUiThread {
             if (flashAuto && !linternaOn) {
-                if (hayLuz && !linternaAutoActiva) {
+                if (!hayLuz) {
+                    framesPocaLuz++
+                    framesBuenaLuz = 0
+                } else {
+                    framesBuenaLuz++
+                    framesPocaLuz = 0
+                }
+                // Encender solo tras 6 frames seguidos de poca luz
+                if (framesPocaLuz >= 6 && !linternaAutoActiva) {
                     linternaAutoActiva = true
                     camara?.cameraControl?.enableTorch(true)
-                } else if (!hayLuz && linternaAutoActiva) {
+                }
+                // Apagar solo tras 10 frames seguidos de buena luz
+                if (framesBuenaLuz >= 10 && linternaAutoActiva) {
                     linternaAutoActiva = false
                     camara?.cameraControl?.enableTorch(false)
                 }
@@ -206,9 +219,9 @@ class MainActivity : AppCompatActivity() {
         var x = cx.toFloat()
         var y = cy.toFloat()
         when (rotacion) {
-            90 -> { val t = x; x = y; y = anchoImg - t }
+            90 -> { val t = x; x = y; y = altoImg - t }    // altoImg = proxyAncho (ancho original del sensor) ✔
             180 -> { x = anchoImg - x; y = altoImg - y }
-            270 -> { val t = x; x = altoImg - y; y = t }
+            270 -> { val t = x; x = anchoImg - y; y = t }  // anchoImg = proxyAlto (alto original del sensor) ✔
         }
 
         return runOnUiThreadBoolean(x, y, anchoImg.toFloat(), altoImg.toFloat())
