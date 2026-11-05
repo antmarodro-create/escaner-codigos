@@ -31,6 +31,14 @@ class OverlayView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         invalidate()
     }
 
+    fun getRectangulo(): RectF {
+        val w = width * 0.88f
+        val h = height * 0.32f
+        val izq = (width - w) / 2f
+        val alt = height * 0.30f
+        return RectF(izq, alt, izq + w, alt + h)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
