@@ -398,7 +398,7 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(
             this,
             if (linternaOn) "Linterna ON" else "Linterna OFF",
-            Toast.LENGTH_TOP
+            Toast.LENGTH_SHORT
         ).show()
     }
 
