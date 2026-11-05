@@ -393,13 +393,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun alternarLinterna() {
         linternaOn = !linternaOn
+        linternaAutoActiva = false
         camara?.cameraControl?.enableTorch(linternaOn)
         Toast.makeText(
             this,
             if (linternaOn) "Linterna ON" else "Linterna OFF",
-            Toast.LENGTH_SHORT
+            Toast.LENGTH_TOP
         ).show()
     }
+
 
     override fun onDestroy() {
         super.onDestroy()
