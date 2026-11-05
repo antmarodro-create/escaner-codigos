@@ -6,7 +6,10 @@
 
     <application
         android:label="Escáner de Códigos"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/Theme.Escaner">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
